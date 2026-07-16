@@ -5,10 +5,20 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 3. Instalar dependencias ocultas del sistema que necesita OpenCV
-RUN apt-get update && apt-get install -y \
-    libglib2.0-0 libsm6 libxext6 libxrender-dev \
-    && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update && apt-get install -y \
+#     libglib2.0-0 libsm6 libxext6 libxrender-dev \
+#     && rm -rf /var/lib/apt/lists/*
 
+# 3. Instalar dependencias ocultas del sistema que necesita OpenCV y YOLO
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    && rm -rf /var/lib/apt/lists/*
+    
 # 4. Copiar e instalar los requirements primero (aprovecha la caché de Docker)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
