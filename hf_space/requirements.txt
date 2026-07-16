@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+python-multipart
+huggingface_hub
+ultralytics
+opencv-python-headless
+numpy
+python-dotenv
