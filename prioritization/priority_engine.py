@@ -1,7 +1,7 @@
 # prioritization/priority_engine.py
 from prioritization.rules import calculate_bbox_area, get_damage_percentage, SEVERITY_LEVELS
 
-def evaluate_single_damage(detection: dict) -> str:
+def evaluate_single_damage(detection: dict, image_area: float) -> str:
     """Evalúa un daño individual y devuelve su nivel de prioridad."""
     damage_class = detection["class"]
     bbox = detection["bbox"]
@@ -13,7 +13,7 @@ def evaluate_single_damage(detection: dict) -> str:
 
     # 2. Calcular el tamaño del daño
     area = calculate_bbox_area(bbox)
-    pct = get_damage_percentage(area)
+    pct = get_damage_percentage(area, image_area)
 
     # 3. Aplicar reglas de negocio según la clase (Estos números los podemos ajustar)
     if damage_class == "Alligator Crack" or damage_class == "Alligator_Crack":
@@ -37,13 +37,24 @@ def evaluate_single_damage(detection: dict) -> str:
 def evaluate_road_image(yolo_data: dict) -> dict:
     """Recibe el JSON completo de YOLO y devuelve el veredicto final."""
     detections = yolo_data.get("detections", [])
-    
+
     if not detections:
         return {
-            "nivel_alerta": "ESTABLE", 
-            "accion": "Ninguna acción requerida.", 
+            "nivel_alerta": "ESTABLE",
+            "accion": "Ninguna acción requerida.",
             "detalles": "No se detectaron anomalías en el asfalto."
         }
+
+    # Sin dimensiones no se puede medir nada: preferimos fallar a inventarnos
+    # un tamaño de referencia y devolver porcentajes falsos en silencio.
+    image = yolo_data.get("image") or {}
+    width, height = image.get("width"), image.get("height")
+    if not width or not height:
+        raise ValueError(
+            "El JSON de YOLO no trae 'image.width'/'image.height'. Sin las "
+            "dimensiones reales no se puede calcular el tamaño de los daños."
+        )
+    image_area = width * height
 
     highest_level = "BAJA"
     # Diccionario para saber qué nivel "pesa" más a la hora de comparar
@@ -51,7 +62,7 @@ def evaluate_road_image(yolo_data: dict) -> dict:
 
     # Evaluar todos los daños y quedarse con el peor
     for det in detections:
-        lvl = evaluate_single_damage(det)
+        lvl = evaluate_single_damage(det, image_area)
         if priority_order[lvl] > priority_order[highest_level]:
             highest_level = lvl
 
