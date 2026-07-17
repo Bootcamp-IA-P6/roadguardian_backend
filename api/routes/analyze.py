@@ -1,8 +1,11 @@
 """POST /analyze — el flujo completo: foto → detecciones → gravedad → informe."""
 
 import logging
+import re
+from datetime import datetime
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import Response
 
 from api.config import MAX_UPLOAD_BYTES
 from api.schemas.analysis import AnalisisResponse
@@ -10,6 +13,7 @@ from api.services.yolo_client import YoloError, detect
 from llm.report import generate_report
 from prioritization.priority_engine import evaluate_road_image
 from prioritization.rules import calculate_bbox_area, get_damage_percentage
+from reports.pdf import generar_pdf
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -53,11 +57,11 @@ def _formatear_detecciones(yolo_data: dict) -> list[dict]:
     ]
 
 
-@router.post("/analyze", response_model=AnalisisResponse, summary="Analiza una foto de firme")
-async def analyze(file: UploadFile = File(..., description="Fotografía del firme")):
-    """Detecta daños, calcula su gravedad y redacta un informe técnico.
+async def _analizar(file: UploadFile) -> tuple[dict, bytes, dict]:
+    """El flujo completo. Devuelve (análisis, bytes de la foto, JSON de YOLO).
 
-    Si el LLM falla, se devuelve igualmente el veredicto sin el informe.
+    Lo usan los dos endpoints: /analyze lo serializa a JSON y /analyze/pdf lo
+    maqueta. La política de fallos vive aquí, en un solo sitio.
     """
     contenido = await file.read()
     _validar(file, contenido)
@@ -82,7 +86,7 @@ async def analyze(file: UploadFile = File(..., description="Fotografía del firm
         logger.exception("El LLM no pudo redactar el informe")
         informe_error = f"No se ha podido generar el informe ({type(e).__name__}). El nivel de alerta sí es válido."
 
-    return {
+    analisis = {
         "filename": file.filename or "imagen.jpg",
         "imagen": yolo_data["image"],
         "total_detecciones": len(yolo_data["detections"]),
@@ -91,3 +95,48 @@ async def analyze(file: UploadFile = File(..., description="Fotografía del firm
         "informe": informe,
         "informe_error": informe_error,
     }
+    return analisis, contenido, yolo_data
+
+
+@router.post("/analyze", response_model=AnalisisResponse, summary="Analiza una foto de firme")
+async def analyze(file: UploadFile = File(..., description="Fotografía del firme")):
+    """Detecta daños, calcula su gravedad y redacta un informe técnico.
+
+    Si el LLM falla, se devuelve igualmente el veredicto sin el informe.
+    """
+    analisis, _, _ = await _analizar(file)
+    return analisis
+
+
+def _nombre_pdf(filename: str, nivel: str) -> str:
+    """informe_CRITICO_foto_20260717.pdf, sin caracteres que rompan la cabecera."""
+    base = re.sub(r"[^A-Za-z0-9_-]", "_", filename.rsplit(".", 1)[0])[:40]
+    return f"informe_{nivel}_{base}_{datetime.now():%Y%m%d}.pdf"
+
+
+@router.post(
+    "/analyze/pdf",
+    summary="Analiza una foto y devuelve el informe en PDF",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}, "description": "El informe en PDF"}},
+)
+async def analyze_pdf(file: UploadFile = File(..., description="Fotografía del firme")):
+    """Igual que /analyze, pero devuelve un PDF maquetado en vez de JSON.
+
+    Hace su propio análisis completo, así que pedir el JSON y el PDF de la
+    misma foto cuesta dos llamadas al LLM. Se evitaría guardando el resultado
+    y sirviéndolo por id, a cambio de tener que gestionar almacenamiento y
+    caducidad: no compensa mientras no haga falta.
+    """
+    analisis, contenido, yolo_data = await _analizar(file)
+    pdf = generar_pdf(contenido, analisis, yolo_data["detections"])
+
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{_nombre_pdf(analisis["filename"], analisis["veredicto"]["nivel_alerta"])}"'
+            )
+        },
+    )
