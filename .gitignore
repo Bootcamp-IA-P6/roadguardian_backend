@@ -60,6 +60,9 @@ desktop.ini
 .env
 .env.*
 
+# Excepción: la plantilla sí se versiona (no contiene secretos)
+!.env.example
+
 # ===========================
 # Models
 # ===========================
