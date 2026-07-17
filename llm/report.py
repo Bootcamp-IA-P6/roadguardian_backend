@@ -5,7 +5,7 @@ Los textos que se le mandan al modelo no están aquí: viven en llm/prompts/*.md
 
 import os
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from llm import prompts
 from llm.image import to_data_url
@@ -52,8 +52,13 @@ def build_user_prompt(yolo_data: dict, verdict: dict) -> str:
     )
 
 
-def generate_report(image_bytes: bytes, yolo_data: dict, verdict: dict) -> str:
-    """Pide al LLM el informe técnico. Devuelve el texto en markdown."""
+async def generate_report(image_bytes: bytes, yolo_data: dict, verdict: dict) -> str:
+    """Pide al LLM el informe técnico. Devuelve el texto en markdown.
+
+    Es async porque la llamada tarda ~30s: el cliente síncrono dentro de una
+    ruta async bloquearía el bucle de eventos y el servidor entero dejaría de
+    atender a nadie mientras tanto.
+    """
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise ValueError("Falta OPENROUTER_API_KEY en el entorno.")
@@ -62,9 +67,9 @@ def generate_report(image_bytes: bytes, yolo_data: dict, verdict: dict) -> str:
     if not model:
         raise ValueError("Falta MODEL_NAME en el entorno.")
 
-    client = OpenAI(api_key=api_key, base_url=OPENROUTER_BASE_URL, timeout=TIMEOUT_SECONDS)
+    client = AsyncOpenAI(api_key=api_key, base_url=OPENROUTER_BASE_URL, timeout=TIMEOUT_SECONDS)
 
-    response = client.chat.completions.create(
+    response = await client.chat.completions.create(
         model=model,
         temperature=TEMPERATURE,
         messages=[
