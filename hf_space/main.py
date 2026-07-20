@@ -53,6 +53,13 @@ async def predict(file: UploadFile = File(...)):
     nparr = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
+    if img is None:
+        return {"error": "No se ha podido decodificar la imagen."}
+
+    # Las bbox salen en píxeles de esta imagen, así que sus dimensiones
+    # viajan con ellas: sin esto, el consumidor no puede calcular áreas.
+    height, width = img.shape[:2]
+
     results = model(img, conf=0.25)
     
     detections = []
@@ -76,7 +83,8 @@ async def predict(file: UploadFile = File(...)):
             })
             
     return {
-        "filename": file.filename, 
+        "filename": file.filename,
+        "image": {"width": width, "height": height},
         "total_detections": len(detections),
         "detections": detections
     }
