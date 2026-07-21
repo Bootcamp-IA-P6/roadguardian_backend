@@ -4,10 +4,9 @@ import ImageUploader from "../components/ImageUploader";
 import DetectionCanvas from "../components/DetectionCanvas";
 import ResultsTable from "../components/ResultsTable";
 import PriorityBadge from "../components/PriorityBadge";
-import { mockAnalysis } from "../mocks/mockAnalysis";
-import { downloadReportPdf } from "../services/api";
+import { analyzeImage, downloadReportPdf } from "../services/api";
 
-const USE_MOCK = true;
+const USE_MOCK = false; // ← ya conectamos al backend real
 
 export default function Home() {
   const [file, setFile] = useState(null);
@@ -25,9 +24,7 @@ export default function Home() {
     setImageUrl(URL.createObjectURL(selectedFile));
 
     try {
-      const data = USE_MOCK
-        ? await new Promise((res) => setTimeout(() => res(mockAnalysis), 1200))
-        : null;
+      const data = await analyzeImage(selectedFile);
       setResult(data);
     } catch (err) {
       setError(err.message);
