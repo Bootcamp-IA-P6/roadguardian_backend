@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 YOLO_API_URL = os.getenv("YOLO_API_URL", "http://localhost:7860").rstrip("/")
+YOLO_SPACE = os.getenv("YOLO_SPACE", "Gemita284/roadguardian-api")
 
 # Generoso a propósito: en Render el arranque en frío puede tardar más de un
 # minuto (descarga el modelo en cada despertar). En local sobra de largo.
