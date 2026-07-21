@@ -9,8 +9,7 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from api.config import CORS_ORIGINS, YOLO_API_URL, check_required
+from api.config import CORS_ORIGINS, YOLO_SPACE, check_required
 from api.routes import analyze
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(name)s | %(message)s")
@@ -40,7 +39,7 @@ def avisar_de_lo_que_falta() -> None:
         # No abortamos: sin LLM el servicio sigue dando el veredicto. Pero que
         # no pase desapercibido.
         logger.warning("⚠️  Faltan variables (%s): no habrá informes.", ", ".join(faltan))
-    logger.info("🔗 YOLO en %s", YOLO_API_URL)
+    logger.info("🔗 YOLO en %s", YOLO_SPACE)
 
 
 @app.get("/", tags=["salud"])
@@ -48,6 +47,6 @@ def health_check():
     return {
         "status": "online",
         "servicio": "orquestador",
-        "yolo_api": YOLO_API_URL,
+        "yolo_space": YOLO_SPACE,
         "configuracion_completa": not check_required(),
     }

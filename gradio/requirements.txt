@@ -1,0 +1,5 @@
+gradio
+spaces
+ultralytics
+huggingface_hub
+opencv-python-headless
