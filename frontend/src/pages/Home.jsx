@@ -6,8 +6,6 @@ import ResultsTable from "../components/ResultsTable";
 import PriorityBadge from "../components/PriorityBadge";
 import { analyzeImage, downloadReportPdf } from "../services/api";
 
-const USE_MOCK = false; // ← ya conectamos al backend real
-
 export default function Home() {
   const [file, setFile] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
@@ -37,7 +35,6 @@ export default function Home() {
     if (!file) return;
     setDownloadingPdf(true);
     setError(null);
-
     try {
       const blob = await downloadReportPdf(file);
       const url = URL.createObjectURL(blob);
@@ -57,10 +54,12 @@ export default function Home() {
 
   return (
     <Layout>
-      <ImageUploader onFileSelected={handleFileSelected} isLoading={loading} />
+      <div className="border border-gray-700 border-dashed">
+        <ImageUploader onFileSelected={handleFileSelected} isLoading={loading} />
+      </div>
 
       {error && (
-        <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
+        <div className="mt-4 p-4 bg-red-950 border-l-4 border-red-600 text-red-300 font-mono text-sm">
           {error}
         </div>
       )}
@@ -72,36 +71,37 @@ export default function Home() {
             detections={result.detecciones}
             imgMeta={result.imagen}
           />
-
           <div className="flex items-center justify-between">
             <PriorityBadge level={result.veredicto.nivel_alerta} />
-            <span className="text-sm text-gray-500">
-              {result.total_detecciones} incidencia(s) detectada(s)
+            <span className="font-mono text-xs text-gray-400 tracking-wider">
+              {result.total_detecciones} INCIDENCIA(S) DETECTADA(S)
             </span>
           </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-800 mb-3">Resultados de detección</h2>
+          <div className="bg-asphalt-700 border-t-2 border-amber-500 p-5">
+            <h2 className="font-display uppercase tracking-wide text-concrete-50 mb-3">
+              Resultados de detección
+            </h2>
             <ResultsTable detections={result.detecciones} />
           </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-800 mb-2">Acción recomendada</h2>
-            <p className="text-gray-600 text-sm">{result.veredicto.accion}</p>
+          <div className="bg-asphalt-700 border-t-2 border-amber-500 p-5">
+            <h2 className="font-display uppercase tracking-wide text-concrete-50 mb-2">
+              Acción recomendada
+            </h2>
+            <p className="text-gray-300 text-sm">{result.veredicto.accion}</p>
             <p className="text-gray-500 text-sm mt-1">{result.veredicto.detalles}</p>
           </div>
-
           {result.informe && (
-            <div className="bg-white rounded-lg border border-gray-200 p-5">
-              <h2 className="font-semibold text-gray-800 mb-2">Informe técnico</h2>
-              <p className="text-gray-600 text-sm whitespace-pre-line">{result.informe}</p>
+            <div className="bg-asphalt-700 border-t-2 border-amber-500 p-5">
+              <h2 className="font-display uppercase tracking-wide text-concrete-50 mb-2">
+                Informe técnico
+              </h2>
+              <p className="text-gray-300 text-sm whitespace-pre-line">{result.informe}</p>
             </div>
           )}
-
           <button
             onClick={handleDownloadPdf}
             disabled={downloadingPdf}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-3 rounded-lg transition"
+            className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-600 text-asphalt-900 font-display uppercase tracking-wide py-3 transition"
           >
             {downloadingPdf ? "Generando PDF..." : "📄 Descargar informe en PDF"}
           </button>

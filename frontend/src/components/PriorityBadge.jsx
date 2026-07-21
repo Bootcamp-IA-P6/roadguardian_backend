@@ -1,16 +1,19 @@
 const PRIORITY_STYLES = {
-  alta: "bg-red-100 text-red-800 border-red-300",
-  media: "bg-amber-100 text-amber-800 border-amber-300",
-  baja: "bg-green-100 text-green-800 border-green-300",
+  alta: "bg-red-600 text-white",
+  media: "bg-amber-500 text-asphalt-900",
+  baja: "bg-green-600 text-white",
 };
 
 export default function PriorityBadge({ level }) {
   const normalized = (level || "").toLowerCase();
-  const style = PRIORITY_STYLES[normalized] || "bg-gray-100 text-gray-800 border-gray-300";
+  const style = PRIORITY_STYLES[normalized] || "bg-gray-500 text-white";
 
   return (
-    <span className={`inline-block px-3 py-1 rounded-full border text-sm font-semibold uppercase tracking-wide ${style}`}>
-      Prioridad {level}
+    <span
+      className={`inline-flex items-center gap-2 px-4 py-2 font-display uppercase tracking-wide text-sm ${style}`}
+      style={{ clipPath: "polygon(0 0, 100% 0, 100% 70%, 92% 100%, 0 100%)" }}
+    >
+      ⚠ Prioridad {level}
     </span>
   );
 }

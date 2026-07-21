@@ -29,7 +29,7 @@ export default function DetectionCanvas({ imageUrl, detections, imgMeta }) {
   const scaleY = displaySize.height / imgMeta.height;
 
   return (
-    <div ref={containerRef} className="relative w-full rounded-lg overflow-hidden border border-gray-200">
+    <div ref={containerRef} className="relative w-full overflow-hidden border-2 border-amber-500">
       <img src={imageUrl} alt="Análisis de pavimento" className="w-full block" />
       {displaySize.width > 0 && (
         <svg
@@ -46,7 +46,7 @@ export default function DetectionCanvas({ imageUrl, detections, imgMeta }) {
               <g key={i}>
                 <rect x={x} y={y} width={w} height={h} fill="none" stroke={color} strokeWidth="3" rx="2" />
                 <rect x={x} y={Math.max(y - 20, 0)} width={Math.max(w, 90)} height="20" fill={color} />
-                <text x={x + 4} y={Math.max(y - 5, 15)} fill="white" fontSize="12" fontWeight="600">
+                <text x={x + 4} y={Math.max(y - 5, 15)} fill="white" fontSize="12" fontWeight="600" fontFamily="IBM Plex Mono, monospace">
                   {det.clase} {(det.confianza * 100).toFixed(0)}%
                 </text>
               </g>
