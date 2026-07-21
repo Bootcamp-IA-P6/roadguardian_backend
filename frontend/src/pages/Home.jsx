@@ -5,30 +5,56 @@ import DetectionCanvas from "../components/DetectionCanvas";
 import ResultsTable from "../components/ResultsTable";
 import PriorityBadge from "../components/PriorityBadge";
 import { mockAnalysis } from "../mocks/mockAnalysis";
+import { downloadReportPdf } from "../services/api";
 
-const USE_MOCK = true; // cambiar a false cuando conectemos el backend real
+const USE_MOCK = true;
 
 export default function Home() {
+  const [file, setFile] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
-  async function handleFileSelected(file) {
+  async function handleFileSelected(selectedFile) {
+    setFile(selectedFile);
     setLoading(true);
     setError(null);
     setResult(null);
-    setImageUrl(URL.createObjectURL(file));
+    setImageUrl(URL.createObjectURL(selectedFile));
 
     try {
       const data = USE_MOCK
         ? await new Promise((res) => setTimeout(() => res(mockAnalysis), 1200))
-        : null; // aquí irá analyzeImage(file) cuando conectemos el backend real
+        : null;
       setResult(data);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!file) return;
+    setDownloadingPdf(true);
+    setError(null);
+
+    try {
+      const blob = await downloadReportPdf(file);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "informe_roadguardian.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDownloadingPdf(false);
     }
   }
 
@@ -74,6 +100,14 @@ export default function Home() {
               <p className="text-gray-600 text-sm whitespace-pre-line">{result.informe}</p>
             </div>
           )}
+
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-3 rounded-lg transition"
+          >
+            {downloadingPdf ? "Generando PDF..." : "📄 Descargar informe en PDF"}
+          </button>
         </div>
       )}
     </Layout>
