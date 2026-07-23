@@ -9,7 +9,7 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.config import CORS_ORIGINS, YOLO_SPACE, check_required
+from api.config import CORS_ORIGINS, CORS_ORIGIN_REGEX, YOLO_SPACE, check_required
 from api.routes import analyze
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(name)s | %(message)s")
@@ -25,6 +25,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=CORS_ORIGIN_REGEX,
     allow_methods=["*"],
     allow_headers=["*"],
 )

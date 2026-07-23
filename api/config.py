@@ -27,6 +27,11 @@ CORS_ORIGINS = [
     o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",") if o.strip()
 ]
 
+# Vercel genera una URL nueva por cada rama/PR (…-git-develop-….vercel.app),
+# imposible de enumerar a mano. Este patrón autoriza el dominio de producción y
+# todos los previews de una sola vez. Configurable por si el front cambia de host.
+CORS_ORIGIN_REGEX = os.getenv("CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app")
+
 
 def check_required() -> list[str]:
     """Devuelve las variables imprescindibles que falten.
