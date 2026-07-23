@@ -17,8 +17,15 @@ def evaluate_single_damage(detection: dict, image_area: float) -> str:
 
     # 3. Aplicar reglas de negocio según la clase (Estos números los podemos ajustar)
     if damage_class == "Alligator Crack" or damage_class == "Alligator_Crack":
-        # Piel de cocodrilo indica fallo estructural bajo el asfalto. Siempre es grave.
-        return "CRITICO" if pct > 10 else "ALTA"
+        # El bbox sobreestima el area real en esta clase por la perspectiva
+        # de las fotos en carretera (caso 23/07/2026: 67.5% no era una
+        # emergencia real). Umbrales mas altos que en el resto de clases.
+        if pct > 85:
+            return "CRITICO"
+        elif pct > 20:
+            return "ALTA"
+        else:
+            return "MEDIA"
 
     if damage_class == "Pothole":
         # Los baches revientan neumáticos. Si es grande, es crítico.
