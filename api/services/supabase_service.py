@@ -39,13 +39,12 @@ def save_detections(inspection_id: str, detections: list) -> None:
         save_detection(
             {
                 "inspection_id": inspection_id,
-                "damage_type": detection["damage_type"],
+                "damage_type": detection["class"],
                 "confidence": detection["confidence"],
-                "surface_pct": detection["surface_pct"],
+                "surface_pct": None,
                 "bbox": detection["bbox"],
             }
         )
-
 
 def get_inspections():
     """

@@ -132,6 +132,27 @@ async def analyze(file: UploadFile = File(..., description="Fotografía del firm
         file_bytes=contenido,
         content_type=file.content_type or "image/jpeg",
     )
+    
+    inspection_id = save_inspection(
+    {
+        "source_type": "image",
+        "original_image": image_path,
+        "original_filename": file.filename,
+        "status": "completed",
+        "total_detections": analisis["total_detecciones"],
+        "alert_level": analisis["veredicto"]["nivel_alerta"],
+        "recommended_action": analisis["veredicto"]["accion"],
+    }
+)
+
+    print(f"Inspección guardada: {inspection_id}")
+    print(yolo_data["detections"][0])
+    
+    save_detections(
+    inspection_id=inspection_id,
+    detections=yolo_data["detections"],
+)
+
 
     return analisis
 
