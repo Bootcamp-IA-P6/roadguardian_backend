@@ -106,15 +106,6 @@ async def _analizar(file: UploadFile) -> tuple[dict, bytes, dict]:
     }
     return analisis, contenido, yolo_data
 
-
-# @router.post("/analyze", response_model=AnalisisResponse, summary="Analiza una foto de firme")
-# async def analyze(file: UploadFile = File(..., description="Fotografía del firme")):
-#     """Detecta daños, calcula su gravedad y redacta un informe técnico.
-
-#     Si el LLM falla, se devuelve igualmente el veredicto sin el informe.
-#     """
-#     analisis, _, _ = await _analizar(file)
-#     return analisis
 @router.post("/analyze", response_model=AnalisisResponse, summary="Analiza una foto de firme")
 async def analyze(file: UploadFile = File(..., description="Fotografía del firme")):
     """Detecta daños, calcula su gravedad y redacta un informe técnico.
@@ -146,7 +137,6 @@ async def analyze(file: UploadFile = File(..., description="Fotografía del firm
 )
 
     print(f"Inspección guardada: {inspection_id}")
-    print(yolo_data["detections"][0])
     
     save_detections(
     inspection_id=inspection_id,
