@@ -270,8 +270,8 @@ Como ya se guarda toda la información en Supabase, el siguiente paso natural es
 |:---:|---|---|
 | 🧭 | **Gema Yébenes** | ![Scrum Master](https://img.shields.io/badge/-Scrum%20Master-6f42c1) · Desarrollo |
 | 🎯 | **Camila Arenas** | ![Product Owner](https://img.shields.io/badge/-Product%20Owner-0969da) · Desarrollo |
-| 👤 | **Joaquín** | ![Team Member](https://img.shields.io/badge/-Team%20Member-6a737d) |
-| 👤 | **Maryory** | ![Team Member](https://img.shields.io/badge/-Team%20Member-6a737d) |
+| 👤 | **Joaquín Lázaro** | ![Team Member](https://img.shields.io/badge/-Team%20Member-6a737d) |
+| 👤 | **Maryori Cruz** | ![Team Member](https://img.shields.io/badge/-Team%20Member-6a737d) |
 
 </div>
 
