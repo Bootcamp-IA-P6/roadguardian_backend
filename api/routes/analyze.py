@@ -3,6 +3,8 @@
 import logging
 import re
 from datetime import datetime
+import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -14,6 +16,13 @@ from llm.report import generate_report
 from prioritization.priority_engine import evaluate_road_image
 from prioritization.rules import calculate_bbox_area, get_damage_percentage
 from reports.pdf import generar_pdf
+from api.services.storage_service import upload_file
+from api.services.supabase_service import (
+    save_detections,
+    save_inspection,
+)
+
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -97,14 +106,44 @@ async def _analizar(file: UploadFile) -> tuple[dict, bytes, dict]:
     }
     return analisis, contenido, yolo_data
 
-
 @router.post("/analyze", response_model=AnalisisResponse, summary="Analiza una foto de firme")
 async def analyze(file: UploadFile = File(..., description="Fotografía del firme")):
     """Detecta daños, calcula su gravedad y redacta un informe técnico.
 
     Si el LLM falla, se devuelve igualmente el veredicto sin el informe.
     """
-    analisis, _, _ = await _analizar(file)
+    analisis, contenido, yolo_data = await _analizar(file)
+    
+    image_path, pdf_path = _generate_storage_paths(
+        file.filename or "imagen.jpg"
+    )
+    upload_file(
+        bucket="originals",
+        destination_path=image_path,
+        file_bytes=contenido,
+        content_type=file.content_type or "image/jpeg",
+    )
+    
+    inspection_id = save_inspection(
+    {
+        "source_type": "image",
+        "original_image": image_path,
+        "original_filename": file.filename,
+        "status": "completed",
+        "total_detections": analisis["total_detecciones"],
+        "alert_level": analisis["veredicto"]["nivel_alerta"],
+        "recommended_action": analisis["veredicto"]["accion"],
+    }
+)
+
+    print(f"Inspección guardada: {inspection_id}")
+    
+    save_detections(
+    inspection_id=inspection_id,
+    detections=yolo_data["detections"],
+)
+
+
     return analisis
 
 
@@ -112,6 +151,20 @@ def _nombre_pdf(filename: str, nivel: str) -> str:
     """informe_CRITICO_foto_20260717.pdf, sin caracteres que rompan la cabecera."""
     base = re.sub(r"[^A-Za-z0-9_-]", "_", filename.rsplit(".", 1)[0])[:40]
     return f"informe_{nivel}_{base}_{datetime.now():%Y%m%d}.pdf"
+
+# Esta funcion genera rutas únicas para guardar la imagen y el PDF en Supabase Storage. Se usa para evitar colisiones de nombres y organizar los archivos en carpetas separadas.
+
+def _generate_storage_paths(filename: str) -> tuple[str, str]:
+    """
+    Genera rutas únicas para guardar la imagen y el PDF en Supabase Storage.
+    """
+    extension = Path(filename).suffix or ".jpg"
+    unique_id = uuid.uuid4().hex
+
+    image_path = f"{unique_id}{extension}"
+    pdf_path = f"{unique_id}.pdf"
+
+    return image_path, pdf_path
 
 
 @router.post(

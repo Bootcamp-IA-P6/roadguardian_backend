@@ -84,4 +84,5 @@ async def generate_report(image_bytes: bytes, yolo_data: dict, verdict: dict) ->
         ],
     )
 
+    print(response.model_dump())
     return response.choices[0].message.content

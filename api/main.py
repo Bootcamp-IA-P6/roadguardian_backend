@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.config import CORS_ORIGINS, CORS_ORIGIN_REGEX, YOLO_SPACE, check_required
 from api.routes import analyze
+from api.services.supabase_client import supabase
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(name)s | %(message)s")
 logger = logging.getLogger(__name__)
