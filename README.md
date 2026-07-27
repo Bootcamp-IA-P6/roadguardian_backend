@@ -21,6 +21,16 @@ RoadGuardian analiza fotografías del firme de una carretera y devuelve un diagn
 
 <br/>
 
+## 🌐 Despliegue
+
+| Servicio | Plataforma | Enlace |
+|---|---|---|
+| 🖥️ Frontend | Vercel | [road-guardian-frontend.vercel.app](https://road-guardian-frontend.vercel.app) |
+| 🧠 Backend — Orquestador | Render | [roadguardian-backend-wahv.onrender.com](https://roadguardian-backend-wahv.onrender.com) |
+| 🎯 Microservicio YOLO | Hugging Face Spaces | [huggingface.co/spaces/Gemita284/roadguardian-api](https://huggingface.co/spaces/Gemita284/roadguardian-api) |
+
+<br/>
+
 ## 🏗️ 1. Arquitectura
 
 El proyecto son **dos servicios independientes** que se hablan por red, más una base de datos:
