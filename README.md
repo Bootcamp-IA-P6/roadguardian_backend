@@ -52,6 +52,19 @@ graph TD
 - **LLM (OpenRouter)**: redacta el informe técnico en prosa a partir de las detecciones. Es un paso opcional: si falla, el resto del análisis se entrega igualmente.
 - **Supabase**: base de datos (Postgres) + almacenamiento de archivos, donde se guarda cada inspección.
 
+### 🕳️ ¿Qué detecta el modelo?
+
+El modelo YOLO11m fue entrenado a medida para reconocer **4 clases de daño** en el firme. El motor de reglas (`prioritization/priority_engine.py`) no trata todas igual: usa umbrales distintos de superficie ocupada según lo peligrosa que sea cada una:
+
+| Clase (YOLO) | Qué es | Cómo se evalúa su gravedad |
+|---|---|---|
+| 🕳️ **Pothole** (bache) | Hueco en el firme. El daño más peligroso: puede reventar un neumático o desestabilizar un vehículo. | `CRITICO` si ocupa más del 5 % de la imagen; si no, `ALTA`. Umbral bajo a propósito por su peligrosidad. |
+| 🐊 **Alligator Crack** (grieta tipo cocodrilo) | Red de grietas entrelazadas por fatiga del firme, parecida a la piel de un cocodrilo. | `CRITICO` si >85 %, `ALTA` si >20 %, si no `MEDIA`. Umbrales más altos que el resto porque el bbox sobreestima el área real por la perspectiva de las fotos en carretera. |
+| ↔️ **Transverse Crack** (grieta transversal) | Grieta perpendicular al sentido de la vía. | `ALTA` si >2 %, si no `MEDIA`. |
+| ↕️ **Longitudinal Crack** (grieta longitudinal) | Grieta paralela al sentido de la vía; suele ser el primer síntoma de deterioro del firme. | `MEDIA` si >2 %, si no `BAJA`. |
+
+Por debajo del 25 % de confianza, cualquier detección se considera dudosa y se marca directamente como `BAJA`, sea cual sea su clase — es un filtro de seguridad para no disparar alertas por falsos positivos poco fiables.
+
 <br/>
 
 ## 🔄 2. Flujo completo de un análisis (`POST /analyze`)
