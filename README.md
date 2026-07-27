@@ -8,46 +8,39 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![YOLO11](https://img.shields.io/badge/YOLO11-Ultralytics-00FFFF)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white)
+![OpenRouter](https://img.shields.io/badge/LLM-OpenRouter-8A2BE2)
 ![Status](https://img.shields.io/badge/status-en%20desarrollo-yellow)
 
 Proyecto desarrollado como parte del **Bootcamp de Inteligencia Artificial de Factoría F5**
 
 </div>
 
----
-
-## 👥 Equipo
-
-| Nombre | Rol |
-|---|---|
-| **Gema Yébenes** | Scrum Master · Desarrollo |
-| **Camila Arenas** | Product Owner · Desarrollo |
-| **Joaquín** | Team Member |
-| **Maryory** | Team Member |
-
----
+<br/>
 
 RoadGuardian analiza fotografías del firme de una carretera y devuelve un diagnóstico completo: qué daños hay (baches, grietas...), qué nivel de alerta tienen, un informe técnico redactado por IA y, opcionalmente, un PDF listo para entregar. Cada inspección queda además guardada en base de datos para poder consultarla más adelante.
+
+<br/>
 
 ## 🏗️ 1. Arquitectura
 
 El proyecto son **dos servicios independientes** que se hablan por red, más una base de datos:
 
-```
-                     ┌─────────────────────────┐
-   Foto  ──────────► │   Servicio B: api/       │
-                      │   Orquestador (FastAPI)  │
-                      │   Puerto 8000            │
-                      └─────────┬────────────────┘
-                                │
-              ┌─────────────────┼─────────────────┐
-              ▼                 ▼                 ▼
-   ┌─────────────────┐ ┌───────────────┐ ┌─────────────────┐
-   │ Servicio A: YOLO │ │ LLM           │ │ Supabase         │
-   │ (Hugging Face)   │ │ (OpenRouter)  │ │ (Postgres +      │
-   │ Detecta daños    │ │ Redacta el    │ │  Storage)        │
-   │                  │ │ informe       │ │ Guarda todo      │
-   └─────────────────┘ └───────────────┘ └─────────────────┘
+```mermaid
+graph TD
+    U(["📷 Foto del firme"]) --> B["🧠 Servicio B — Orquestador<br/>FastAPI · puerto 8000"]
+    B --> Y["🎯 Servicio A — YOLO11<br/>Hugging Face Space"]
+    Y --> B
+    B --> L["✍️ LLM — OpenRouter<br/>Informe técnico"]
+    L --> B
+    B --> S[("🗄️ Supabase<br/>Postgres + Storage")]
+    B --> R(["📄 JSON / PDF"])
+
+    style U fill:#0f172a,color:#fff,stroke:#f59e0b
+    style B fill:#f59e0b,color:#0f172a,stroke:#0f172a
+    style Y fill:#0f172a,color:#fff,stroke:#f59e0b
+    style L fill:#0f172a,color:#fff,stroke:#f59e0b
+    style S fill:#3ECF8E,color:#0f172a,stroke:#0f172a
+    style R fill:#0f172a,color:#fff,stroke:#f59e0b
 ```
 
 - **Servicio B — `api/`**: es el orquestador. No hace ni detección ni redacción por sí mismo: coordina las llamadas a los demás servicios y aplica las reglas de negocio. Es el único que consume el frontend.
@@ -59,9 +52,30 @@ El proyecto son **dos servicios independientes** que se hablan por red, más una
 - **LLM (OpenRouter)**: redacta el informe técnico en prosa a partir de las detecciones. Es un paso opcional: si falla, el resto del análisis se entrega igualmente.
 - **Supabase**: base de datos (Postgres) + almacenamiento de archivos, donde se guarda cada inspección.
 
+<br/>
+
 ## 🔄 2. Flujo completo de un análisis (`POST /analyze`)
 
-Cuando se sube una foto, pasa por estas etapas en orden:
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant B as Orquestador (api/)
+    participant Y as YOLO (HF Space)
+    participant R as Motor de reglas
+    participant L as LLM (OpenRouter)
+    participant S as Supabase
+
+    U->>B: POST /analyze (foto)
+    B->>B: Validar archivo
+    B->>Y: Detectar daños
+    Y-->>B: Detecciones (clase, bbox, confianza)
+    B->>R: Calcular nivel de alerta
+    R-->>B: Veredicto
+    B->>L: Redactar informe técnico
+    L-->>B: Informe (o error, no bloqueante)
+    B->>S: Guardar inspección + detecciones + imagen
+    B-->>U: JSON con veredicto + informe
+```
 
 1. **Validación** — se comprueba que el archivo no esté vacío, que no supere el tamaño máximo y que sea una imagen (`api/routes/analyze.py`, función `_validar`).
 2. **YOLO** — se manda la imagen al Space de Hugging Face y se reciben las detecciones (clase, confianza, bounding box). Si YOLO no responde, aquí sí se corta todo con un error 503: sin detecciones no hay nada que analizar.
@@ -71,22 +85,26 @@ Cuando se sube una foto, pasa por estas etapas en orden:
 5. **Persistencia en Supabase** — se guarda todo (ver sección siguiente).
 6. **Respuesta** — se devuelve el JSON completo al frontend.
 
+<br/>
+
 ## 📡 3. Endpoints disponibles
 
-### Orquestador (`api/`, puerto 8000)
+**Orquestador** (`api/`, puerto 8000)
 
 | Método | Ruta | Qué hace |
-|---|---|---|
-| `GET` | `/` | Salud del servicio: si está online y si la configuración (API keys) está completa. |
-| `POST` | `/analyze` | Sube una foto → devuelve el análisis completo en JSON (detecciones, veredicto, informe). Guarda la inspección en Supabase. |
-| `POST` | `/analyze/pdf` | Igual que `/analyze`, pero devuelve el informe maquetado en PDF en vez de JSON. |
+|:---:|---|---|
+| ![GET](https://img.shields.io/badge/GET-61affe?style=flat-square) | `/` | Salud del servicio: si está online y si la configuración (API keys) está completa. |
+| ![POST](https://img.shields.io/badge/POST-49cc90?style=flat-square) | `/analyze` | Sube una foto → devuelve el análisis completo en JSON (detecciones, veredicto, informe). Guarda la inspección en Supabase. |
+| ![POST](https://img.shields.io/badge/POST-49cc90?style=flat-square) | `/analyze/pdf` | Igual que `/analyze`, pero devuelve el informe maquetado en PDF en vez de JSON. |
 
-### Microservicio YOLO (Hugging Face Space)
+**Microservicio YOLO** (Hugging Face Space)
 
 | Método | Ruta | Qué hace |
-|---|---|---|
-| `GET` | `/` | Salud del servicio y confirmación de qué modelo tiene cargado. |
-| `POST` | `/predict` | Recibe una imagen y devuelve las detecciones en JSON (clase, confianza, bbox). |
+|:---:|---|---|
+| ![GET](https://img.shields.io/badge/GET-61affe?style=flat-square) | `/` | Salud del servicio y confirmación de qué modelo tiene cargado. |
+| ![POST](https://img.shields.io/badge/POST-49cc90?style=flat-square) | `/predict` | Recibe una imagen y devuelve las detecciones en JSON (clase, confianza, bbox). |
+
+<br/>
 
 ## 🗄️ 4. Persistencia en Supabase
 
@@ -94,34 +112,17 @@ Esta es la parte nueva desarrollada en los últimos días. Mientras el usuario r
 
 Actualmente se almacena:
 
-#### Storage
-
-- ✅ Imagen original.
-
-#### Tabla `inspections`
-
-Se registra la inspección completa:
-
-- Fecha.
-- Nombre del archivo.
-- Nivel de alerta.
-- Acción recomendada.
-- Número de detecciones.
-- Estado.
-- Referencia a la imagen.
-
-#### Tabla `detections`
-
-Se guarda cada una de las detecciones de forma independiente:
-
-- Tipo de daño.
-- Confianza.
-- Bounding Box.
-- Relación con la inspección mediante `inspection_id`.
+| Dónde | Qué se guarda |
+|---|---|
+| **Storage** | ✅ Imagen original. |
+| **Tabla `inspections`** | Fecha · nombre del archivo · nivel de alerta · acción recomendada · número de detecciones · estado · referencia a la imagen. |
+| **Tabla `detections`** | Cada detección por separado: tipo de daño · confianza · bounding box · relación con la inspección mediante `inspection_id`. |
 
 Gracias a esto, cada inspección queda registrada y puede recuperarse posteriormente.
 
-> Nota: `api/services/supabase_service.py` ya tiene definidas (pero sin implementar, con `pass`) las funciones `get_inspections`, `get_inspection` y `delete_inspection`. Están así a propósito, preparadas para integrarlas más adelante cuando exista el historial en el frontend (ver sección "Qué queda para el futuro").
+> **Nota:** `api/services/supabase_service.py` ya tiene definidas (pero sin implementar, con `pass`) las funciones `get_inspections`, `get_inspection` y `delete_inspection`. Están así a propósito, preparadas para integrarlas más adelante cuando exista el historial en el frontend (ver [Qué queda para el futuro](#-qué-queda-para-el-futuro)).
+
+<br/>
 
 ## 📄 5. Generación del PDF
 
@@ -131,23 +132,31 @@ Que `/analyze` y `/analyze/pdf` sean dos llamadas independientes es intencional:
 
 Actualmente este PDF **no se guarda todavía** en Supabase; simplemente se genera y se devuelve al usuario en la misma petición.
 
+<br/>
+
 ## 🔑 6. Variables de entorno
 
 Se configuran en un archivo `.env` en la raíz (hay un `.env.example` de referencia, sin valores reales).
 
-| Variable | Para qué sirve |
-|---|---|
-| `OPENROUTER_API_KEY` | Autentica las llamadas al LLM que redacta el informe. |
-| `MODEL_NAME` | Qué modelo de OpenRouter usar (ej. `google/gemma-4-26b-a4b-it:free`). |
-| `YOLO_SPACE` | Identificador del Space de Hugging Face al que se le mandan las fotos a analizar (ej. `usuario/roadguardian-api`). |
-| `HF_USER` | Usuario de Hugging Face; se usa para construir el nombre del repo del modelo y del Space. |
-| `HF_TOKEN` | Token de Hugging Face, necesario para subir el modelo o el Space (`scripts/`) y para descargar modelos privados. |
-| `SUPABASE_URL` | URL del proyecto de Supabase. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clave de servicio de Supabase (acceso total: solo debe usarla el backend, nunca el frontend). |
-| `CORS_ORIGINS` | Orígenes autorizados a llamar a la API desde el navegador (coma-separados). |
-| `CORS_ORIGIN_REGEX` | Patrón para autorizar de golpe todos los dominios de preview de Vercel. |
-| `MAX_UPLOAD_MB` | Tamaño máximo de imagen admitido, en MB (por defecto 15). |
-| `YOLO_TIMEOUT_SECONDS` | Cuánto se espera a que responda YOLO antes de dar timeout (por defecto 120s: en Render el arranque en frío puede tardar). |
+| Variable | Obligatoria | Para qué sirve |
+|---|:---:|---|
+| `OPENROUTER_API_KEY` | ⚠️ Degrada sin ella | Autentica las llamadas al LLM que redacta el informe. |
+| `MODEL_NAME` | ⚠️ Degrada sin ella | Qué modelo de OpenRouter usar (ej. `google/gemma-4-26b-a4b-it:free`). |
+| `SUPABASE_URL` | ✅ Sí | URL del proyecto de Supabase. |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ Sí | Clave de servicio de Supabase (acceso total: solo debe usarla el backend, nunca el frontend). |
+| `YOLO_SPACE` | ➖ No | Space de Hugging Face al que se le mandan las fotos a analizar (ej. `usuario/roadguardian-api`). |
+| `HF_USER` | 🔧 Solo despliegue | Usuario de Hugging Face; construye el nombre del repo del modelo y del Space (`scripts/`). |
+| `HF_TOKEN` | 🔧 Solo despliegue | Token de Hugging Face para subir el modelo o el Space, y descargar modelos privados. |
+| `CORS_ORIGINS` | ➖ No | Orígenes autorizados a llamar a la API desde el navegador (coma-separados). |
+| `CORS_ORIGIN_REGEX` | ➖ No | Patrón para autorizar de golpe todos los dominios de preview de Vercel. |
+| `MAX_UPLOAD_MB` | ➖ No | Tamaño máximo de imagen admitido, en MB (por defecto 15). |
+| `YOLO_TIMEOUT_SECONDS` | ➖ No | Cuánto se espera a que responda YOLO antes de dar timeout (por defecto 120s: en Render el arranque en frío puede tardar). |
+
+- ⚠️ **Degrada sin ella**: si falta, el servicio arranca igual y el veredicto se entrega sin informe de texto (`informe_error` explica el motivo).
+- ✅ **Sí**: sin ella el servicio **no arranca** — `api/services/supabase_client.py` lanza un error al importarse.
+- ➖ **No**: tiene un valor por defecto razonable en `api/config.py`.
+
+<br/>
 
 ## 🚀 7. Cómo arrancar el orquestador en local
 
@@ -162,6 +171,8 @@ uvicorn api.main:app --reload --port 8000
 ```
 
 El servicio de YOLO no hace falta arrancarlo en local: el orquestador habla directamente con el Space de Hugging Face configurado en `YOLO_SPACE`.
+
+<br/>
 
 ## 📁 8. Estructura de carpetas
 
@@ -200,6 +211,8 @@ scripts/              Utilidades de despliegue a Hugging Face
 tests/                Tests del motor de reglas y de los prompts
 ```
 
+<br/>
+
 ## 🔮 Qué queda para el futuro
 
 El proyecto ya funciona de principio a fin, pero hay varias mejoras previstas.
@@ -208,19 +221,10 @@ El proyecto ya funciona de principio a fin, pero hay varias mejoras previstas.
 
 Ya se dispone de los **bounding boxes**, pero todavía no se dibujan esos rectángulos sobre una copia de la imagen para guardarla.
 
-La idea es:
-
+```mermaid
+graph LR
+    A["Imagen original"] --> B["Dibujar bounding boxes"] --> C["Guardar imagen anotada"] --> D[("bucket annotated")]
 ```
-Imagen original
-        │
-        ▼
-Dibujar bounding boxes
-        │
-        ▼
-Guardar imagen anotada
-```
-
-y almacenarla en el bucket `annotated`.
 
 ### 2. Guardar el PDF
 
@@ -228,57 +232,51 @@ Actualmente el PDF solo se descarga. La idea es almacenarlo también en el bucke
 
 ### 3. Evitar ejecutar dos veces el análisis
 
-Ahora mismo ocurre esto:
+Ahora mismo, si el usuario pulsa los dos botones, el sistema ejecuta **dos veces YOLO y dos veces el LLM**:
 
-```
-Analizar
-        │
-YOLO
-LLM
-
-Analizar PDF
-        │
-YOLO
-LLM
+```mermaid
+graph TD
+    A1["Analizar"] --> Y1["YOLO"] --> L1["LLM"]
+    A2["Analizar PDF"] --> Y2["YOLO"] --> L2["LLM"]
 ```
 
-Es decir, si el usuario pulsa los dos botones, el sistema ejecuta dos veces YOLO y dos veces el LLM.
+La idea es mejorar la arquitectura para analizar **una sola vez** y servir el PDF bajo demanda a partir de lo ya guardado:
 
-La idea es mejorar la arquitectura para que:
-
+```mermaid
+graph LR
+    A["Analizar"] --> Y["YOLO"] --> P["Priorización"] --> L["LLM"] --> S[("Supabase")] --> I["inspection_id"]
+    I -. "PDF bajo demanda" .-> PDF["Generar / servir PDF"]
 ```
-Analizar
-        │
-YOLO
-Priorización
-LLM
-Guardar todo en Supabase
-        │
-        ▼
-inspection_id
-```
-
-y después, cuando el usuario quiera el PDF:
-
-```
-inspection_id
-        │
-        ▼
-Recuperar el informe
-        │
-        ▼
-Generar (o servir) el PDF
-```
-
-De esta forma no habría que volver a analizar la imagen.
 
 ### 4. Historial de inspecciones
 
 Como ya se guarda toda la información en Supabase, el siguiente paso natural es crear un historial en el frontend donde el usuario pueda:
 
 - Consultar inspecciones anteriores.
-- Ver la imagen original.
-- Ver la imagen anotada.
+- Ver la imagen original y la imagen anotada.
 - Descargar el PDF.
 - Revisar las detecciones.
 - Filtrar por fecha o nivel de alerta.
+
+<br/>
+
+---
+
+## 👥 Equipo
+
+<div align="center">
+
+| | Nombre | Rol |
+|:---:|---|---|
+| 🧭 | **Gema Yébenes** | ![Scrum Master](https://img.shields.io/badge/-Scrum%20Master-6f42c1) · Desarrollo |
+| 🎯 | **Camila Arenas** | ![Product Owner](https://img.shields.io/badge/-Product%20Owner-0969da) · Desarrollo |
+| 👤 | **Joaquín** | ![Team Member](https://img.shields.io/badge/-Team%20Member-6a737d) |
+| 👤 | **Maryory** | ![Team Member](https://img.shields.io/badge/-Team%20Member-6a737d) |
+
+</div>
+
+<div align="center">
+
+🛣️ Proyecto desarrollado en el **Bootcamp de Inteligencia Artificial de Factoría F5**
+
+</div>
